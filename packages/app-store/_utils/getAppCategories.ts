@@ -2,6 +2,12 @@ import { WEBAPP_URL } from "@calcom/lib/constants";
 import type { AppCategories } from "@calcom/prisma/enums";
 import type { IconName } from "@calcom/ui/components/icon";
 
+/** Deprecated categories that should not appear in the app store navigation. */
+type DeprecatedAppCategories = "video" | "web3";
+
+/** Active categories currently displayed in the app store UI. */
+type ActiveAppCategories = Exclude<AppCategories, DeprecatedAppCategories>;
+
 function getHref(baseURL: string, category: string, useQueryParam: boolean) {
   const baseUrlParsed = new URL(baseURL, WEBAPP_URL);
   baseUrlParsed.searchParams.set("category", category);
@@ -15,59 +21,39 @@ type AppCategoryEntry = {
   "data-testid": string;
 };
 
+/**
+ * Omit<> wrapper that builds an AppCategoryEntry from just the icon.
+ * Keeps the category map DRY — href and data-testid are derived automatically.
+ */
+type AppCategoryConfig = { icon: IconName };
+
 const getAppCategories = (baseURL: string, useQueryParam: boolean): AppCategoryEntry[] => {
-  // Manually sorted alphabetically, but leaving "Other" at the end
-  // TODO: Refactor and type with Record<AppCategories, AppCategoryEntry> to enforce consistency
-  return [
-    {
-      name: "analytics",
-      href: getHref(baseURL, "analytics", useQueryParam),
-      icon: "chart-bar",
-      "data-testid": "analytics",
-    },
-    {
-      name: "automation",
-      href: getHref(baseURL, "automation", useQueryParam),
-      icon: "share-2",
-      "data-testid": "automation",
-    },
-    {
-      name: "calendar",
-      href: getHref(baseURL, "calendar", useQueryParam),
-      icon: "calendar",
-      "data-testid": "calendar",
-    },
-    {
-      name: "conferencing",
-      href: getHref(baseURL, "conferencing", useQueryParam),
-      icon: "video",
-      "data-testid": "conferencing",
-    },
-    {
-      name: "crm",
-      href: getHref(baseURL, "crm", useQueryParam),
-      icon: "contact",
-      "data-testid": "crm",
-    },
-    {
-      name: "messaging",
-      href: getHref(baseURL, "messaging", useQueryParam),
-      icon: "mail",
-      "data-testid": "messaging",
-    },
-    {
-      name: "payment",
-      href: getHref(baseURL, "payment", useQueryParam),
-      icon: "credit-card",
-      "data-testid": "payment",
-    },
-    {
-      name: "other",
-      href: getHref(baseURL, "other", useQueryParam),
-      icon: "grid-3x3",
-      "data-testid": "other",
-    },
-  ];
+  /**
+   * Type-safe map: the compiler will error if a new active AppCategories value
+   * is added to the Prisma enum but not mapped here (or vice-versa).
+   *
+   * Sorted alphabetically, with "other" last by convention.
+   */
+  const categoryMap: Record<ActiveAppCategories, AppCategoryConfig> = {
+    analytics: { icon: "chart-bar" },
+    automation: { icon: "share-2" },
+    calendar: { icon: "calendar" },
+    conferencing: { icon: "video" },
+    crm: { icon: "contact" },
+    messaging: { icon: "mail" },
+    payment: { icon: "credit-card" },
+    other: { icon: "grid-3x3" },
+  };
+
+  return (Object.entries(categoryMap) as [ActiveAppCategories, AppCategoryConfig][]).map(
+    ([name, { icon }]) => ({
+      name,
+      href: getHref(baseURL, name, useQueryParam),
+      icon,
+      "data-testid": name,
+    })
+  );
 };
 
 export default getAppCategories;
+
